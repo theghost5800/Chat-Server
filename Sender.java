@@ -3,59 +3,61 @@ package chat;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Vector;
 
 public class Sender implements Runnable {
 
-	static void checkClients(Vector<PrintStream> st) {
-		List<Socket> found = new ArrayList<Socket>();
-		//int i=0;
-		if (!st.isEmpty()) {
-			for (Socket socket : HandleClients.clients) {
-				if (socket.isClosed()) {
-					found.add(socket);
-				}
-			}
-			
-			HandleClients.clients.removeAll(found);
-		}
-	}
 	
-	Vector<PrintStream> openStreams() throws IOException {
-		Vector<PrintStream> streams = new Vector<PrintStream>();
-		for (Socket client : HandleClients.clients) {
-			if (!streams.contains(client)) {
-				streams.add(new PrintStream(client.getOutputStream()));
-			}
-		}	
-		return streams;
-	}
 	
 	void sendMsg(Vector<PrintStream> streams) {
-		for (PrintStream out : streams) 
+		Vector<Socket> found = new Vector<Socket>();
+		
+		for (Socket client : HandleClients.clientStreams.keySet()) {
+			PrintStream out = HandleClients.clientStreams.get(client).getOutputStreamWriter();
 			for (String msg : HandleClients.message) {
 				out.println(msg);
+			}
+			
+			if (out.checkError()) {
+				found.add(client);
+			}
+		}
+		if (!found.isEmpty()) {
+			try {
+				for (Socket delClient : found) {
+					HandleClients.clientStreams.get(delClient).getInputStreamReader().close();
+					HandleClients.clientStreams.get(delClient).getOutputStreamWriter().close();
+					HandleClients.clientStreams.remove(delClient);
+					System.out.println(delClient + " has been disconnected!");
+					delClient.close();
+				}
+				
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		HandleClients.message.clear();
 	}
 	
 	public void run() {
-		Vector<PrintStream> streams = null;
-		try {
-			streams = openStreams();
-		} catch (IOException e) {
-			e.printStackTrace();
-			Thread.currentThread().interrupt();
-		}
+		
+		//new Thread(new CheckClients()).start();
+		Vector<PrintStream> streams = new Vector<PrintStream>();
+		long mapState = 0;
+		
 		while(!Thread.currentThread().isInterrupted()) {
-			checkClients(streams);
-			try {
-				streams = openStreams();
-			} catch (IOException e) {
-				e.printStackTrace();
+	
+			
+			if (mapState != HandleClients.clientStreams.hashCode()) {
+				for (StreamsWrapper wrapper : HandleClients.clientStreams.values()) {
+					if (!streams.contains(wrapper.getOutputStreamWriter())) {
+						streams.add(wrapper.getOutputStreamWriter());
+					}
+				}
+				mapState = HandleClients.clientStreams.hashCode();
 			}
+			
 			
 			
 			if (HandleClients.message.isEmpty()) {

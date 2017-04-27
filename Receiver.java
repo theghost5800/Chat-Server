@@ -2,7 +2,6 @@ package chat;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.Socket;
 
 public class Receiver implements Runnable {
@@ -10,18 +9,20 @@ public class Receiver implements Runnable {
 	private Socket socket;
 	private BufferedReader socketReader;
 	
-	public Receiver(Socket socket) throws IOException {
-		this.socket = socket;
-		socketReader = new BufferedReader(
-				new InputStreamReader(this.socket.getInputStream()));
+	public Receiver(Socket s,BufferedReader buf) throws IOException {
+		this.socket = s;
+		this.socketReader = buf;
 	}
 	
 	@Override
 	public void run() {
-		while(!Thread.currentThread().isInterrupted()) {
-			String msg = null;
+		String msg;
+		while(!(Thread.currentThread().isInterrupted()) ) {
+			
+			
 			try {
 				msg = socketReader.readLine();
+				
 				if (msg == null) {
 					Thread.sleep(1000);
 				}else {
@@ -29,7 +30,8 @@ public class Receiver implements Runnable {
 					
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				break;
+				//e.printStackTrace();
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
