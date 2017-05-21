@@ -1,15 +1,17 @@
 package chat;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.util.Vector;
 
 public class Sender implements Runnable {
-
+	private volatile boolean shutdown = false;
 	
+	public void shutdownSenderThread() {
+		this.shutdown = true;
+	}
 	
-	void sendMsg(Vector<PrintStream> streams) {
+	void sendMsg() {
 		Vector<Socket> found = new Vector<Socket>();
 		
 		for (Socket client : HandleClients.clientStreams.keySet()) {
@@ -22,21 +24,7 @@ public class Sender implements Runnable {
 				found.add(client);
 			}
 		}
-		if (!found.isEmpty()) {
-			try {
-				for (Socket delClient : found) {
-					HandleClients.clientStreams.get(delClient).getInputStreamReader().close();
-					HandleClients.clientStreams.get(delClient).getOutputStreamWriter().close();
-					HandleClients.clientStreams.remove(delClient);
-					System.out.println(delClient + " has been disconnected!");
-					delClient.close();
-				}
-				
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+
 		HandleClients.message.clear();
 	}
 	
@@ -46,7 +34,7 @@ public class Sender implements Runnable {
 		Vector<PrintStream> streams = new Vector<PrintStream>();
 		long mapState = 0;
 		
-		while(!Thread.currentThread().isInterrupted()) {
+		while(!this.shutdown) {
 	
 			
 			if (mapState != HandleClients.clientStreams.hashCode()) {
@@ -64,11 +52,10 @@ public class Sender implements Runnable {
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
-					//e.printStackTrace();
 					Thread.currentThread().interrupt();
 				}
 			}else {
-				sendMsg(streams);
+				sendMsg();
 			}
 		}
 	}
